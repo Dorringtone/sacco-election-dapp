@@ -663,6 +663,38 @@
         }
 
         provider = new ethers.BrowserProvider(window.ethereum);
+
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0xaa36a7" }]
+          });
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: "0xaa36a7",
+                chainName: "Sepolia Test Network",
+                nativeCurrency: {
+                  name: "Sepolia ETH",
+                  symbol: "ETH",
+                  decimals: 18
+                },
+                rpcUrls: ["https://rpc.sepolia.org"],
+                blockExplorerUrls: ["https://sepolia.etherscan.io"]
+              }]
+            });
+
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: "0xaa36a7" }]
+            });
+          } else {
+            throw switchError;
+          }
+        }
+
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         if (!accounts || !accounts.length) throw new Error("No wallet account was selected.");
 
@@ -671,6 +703,11 @@
         contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
         const network = await provider.getNetwork();
+        if (network.chainId !== 11155111n) {
+          showToast("Please switch MetaMask to Sepolia Test Network.", "error", 5000);
+          throw new Error("Wrong network selected. Please use Sepolia Test Network.");
+        }
+
         const role = await detectWalletRole(account);
         $("walletAddress").textContent = shortAddress(account);
         $("walletRole").textContent = role;
@@ -982,10 +1019,20 @@
             account = accounts[0];
             contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
             const network = await provider.getNetwork();
+            $("networkName").textContent = `${network.name} (${network.chainId})`;
+
+            if (network.chainId !== 11155111n) {
+              $("walletAddress").textContent = shortAddress(account);
+              $("walletRole").textContent = "Unknown";
+              setConnectedUi(true);
+              log(`Wrong network detected: ${network.name} (${network.chainId}). Expected Sepolia.`);
+              showToast("Please switch MetaMask to Sepolia Test Network.", "error", 5000);
+              return;
+            }
+
             const role = await detectWalletRole(account);
             $("walletAddress").textContent = shortAddress(account);
             $("walletRole").textContent = role;
-            $("networkName").textContent = `${network.name} (${network.chainId})`;
             setConnectedUi(true);
             log(`Active wallet changed to: ${account} | Detected role: ${role}`);
             showToast(`Wallet switched successfully. Role: ${role}.`, "success", 5000);
@@ -1005,6 +1052,13 @@
             contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
             const network = await provider.getNetwork();
             $("networkName").textContent = `${network.name} (${network.chainId})`;
+
+            if (network.chainId !== 11155111n) {
+              log(`Network changed to ${network.name} (${network.chainId}). Expected Sepolia.`);
+              showToast("Please switch MetaMask to Sepolia Test Network.", "error", 5000);
+              return;
+            }
+
             log(`Network changed to ${network.name} (${network.chainId}).`);
             showToast(`Network changed to ${network.name}.`, "info", 4000);
             await refreshState();
