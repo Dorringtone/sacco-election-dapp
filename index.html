@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SACCO Director Election dApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #dbe3ef;
+      --primary: #14532d;
+      --primary-soft: #e8f5ec;
+      --accent: #0f766e;
+      --danger: #b91c1c;
+      --warning: #b45309;
+      --shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #14532d, #0f766e);
+      color: white;
+      padding: 24px;
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 3.4vw, 2.5rem);
+    }
+
+    .hero p {
+      margin: 0;
+      line-height: 1.5;
+      opacity: 0.96;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2, .card h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
+    .toolbar, .actions {
+      display: grid;
+      gap: 16px;
+    }
+
+    .toolbar {
+      grid-template-columns: 1.4fr 1fr 1fr;
+      margin-bottom: 18px;
+    }
+
+    .live-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 18px;
+    }
+
+    .stat {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .stat-title {
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1rem;
+      font-weight: 700;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin: 10px 0 6px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      outline: none;
+      font-size: 1rem;
+      background: #fff;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .row-2, .row-3 {
+      display: grid;
+      gap: 12px;
+    }
+
+    .row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+      margin-top: 12px;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: var(--primary-soft); color: var(--primary); }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: #f59e0b; color: white; }
+
+    .pill {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #eef6ff;
+      color: #1d4ed8;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .log {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 16px;
+      padding: 16px;
+      min-height: 180px;
+      max-height: 320px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 420px;
+      pointer-events: none;
+    }
+
+    .toast {
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      color: white;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .toast-success { background: #166534; }
+    .toast-error { background: #b91c1c; }
+    .toast-info { background: #0f766e; }
+
+    .toast-text {
+      flex: 1;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .toast-close {
+      background: transparent;
+      color: white;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 700;
+      min-width: auto;
+    }
+
+    .panel {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #fbfcfe 0%, #f7fafc 100%);
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    thead { background: #f8fafc; }
+
+    @media (max-width: 1100px) {
+      .toolbar, .actions { grid-template-columns: 1fr; }
+      .live-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .container { padding: 14px; }
+      .live-grid, .row-2, .row-3 { grid-template-columns: 1fr; }
+      .toast-container {
+        left: 14px;
+        right: 14px;
+        max-width: none;
+      }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toastContainer" class="toast-container"></div>
+
+  <div class="container">
+    <section class="hero">
+      <h1>SACCO Director Election dApp</h1>
+      <p>
+        A mobile-friendly web interface for the SACCO Director Election smart contract on Sepolia.
+        Connect MetaMask, manage election setup as admin, or vote as a registered delegate.
+      </p>
+    </section>
+
+    <section class="toolbar">
+      <div class="card">
+        <h2>Connection</h2>
+        <p class="muted">Connect MetaMask, then the app will interact with the deployed election contract.</p>
+        <button class="btn-primary" id="connectBtn">Connect Wallet</button>
+        <div style="margin-top:12px;"></div>
+        <div><strong>Connected wallet:</strong> <span id="walletAddress">Not connected</span></div>
+        <div><strong>Detected role:</strong> <span id="walletRole">Unknown</span></div>
+        <div><strong>Network:</strong> <span id="networkName">Unknown</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Contract</h2>
+        <div><strong>Address:</strong></div>
+        <div class="muted" id="contractAddressText" style="margin-top:6px; word-break:break-all;"></div>
+        <div style="margin-top:12px;"><span class="pill">Sepolia Only</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Quick Refresh</h2>
+        <p class="muted">Refresh live election state after transactions or wallet changes.</p>
+        <button class="btn-secondary" id="refreshBtn">Refresh Election State</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Live Election State</h2>
+      <div class="live-grid">
+        <div class="stat"><div class="stat-title">Election Status</div><div class="stat-value" id="electionStatusText">-</div></div>
+        <div class="stat"><div class="stat-title">Time Left</div><div class="stat-value" id="timeLeftText">-</div></div>
+        <div class="stat"><div class="stat-title">Voting Deadline</div><div class="stat-value" id="deadlineText">-</div></div>
+        <div class="stat"><div class="stat-title">Known Positions</div><div class="stat-value" id="positionsCountText">-</div></div>
+        <div class="stat"><div class="stat-title">Your Role</div><div class="stat-value" id="roleStatusText">-</div></div>
+      </div>
+    </section>
+
+    <section class="actions">
+      <div class="card">
+        <h2>Admin Actions</h2>
+        <p class="muted">Use the admin wallet for election setup and control.</p>
+
+        <h3>Register Delegate</h3>
+        <label>Delegate Address</label>
+        <input id="delegateAddress" placeholder="0x..." />
+        <div class="row-2">
+          <div>
+            <label>Delegate Name</label>
+            <input id="delegateName" placeholder="Delegate full name" />
+          </div>
+          <div>
+            <label>Membership Number</label>
+            <input id="delegateMembership" placeholder="Membership number" />
+          </div>
+        </div>
+        <button class="btn-primary" id="registerDelegateBtn">Register Delegate</button>
+
+        <hr style="margin:18px 0; border:none; border-top:1px solid var(--border);">
+
+        <h3>Register Candidate</h3>
+        <div class="row-2">
+          <div>
+            <label>Candidate Name</label>
+            <input id="candidateName" placeholder="Candidate full name" />
+          </div>
+          <div>
+            <label>Membership Number</label>
+            <input id="candidateMembership" placeholder="Membership number" />
+          </div>
+        </div>
+        <label>Position</label>
+        <input id="candidatePosition" placeholder="e.g. Chairperson" />
+        <button class="btn-primary" id="registerCandidateBtn">Register Candidate</button>
+
+        <hr style="margin:18px 0; border:none; border-top:1px solid var(--border);">
+
+        <h3>Election Control</h3>
+        <div class="row-2">
+          <div>
+            <label>Candidate ID to Deactivate</label>
+            <input id="deactivateCandidateId" type="number" min="1" placeholder="Candidate ID" />
+          </div>
+          <div>
+            <label>Election Duration (Minutes)</label>
+            <input id="durationMinutes" type="number" min="1" value="30" />
+          </div>
+        </div>
+        <div class="row-3">
+          <button class="btn-warning" id="deactivateCandidateBtn">Deactivate Candidate</button>
+          <button class="btn-accent" id="openElectionBtn">Open Election</button>
+          <button class="btn-danger" id="closeElectionBtn">Close Election</button>
+        </div>
+
+        <label>Transfer Admin To</label>
+        <input id="newAdminAddress" placeholder="0x..." />
+        <button class="btn-secondary" id="transferAdminBtn">Transfer Admin</button>
+      </div>
+
+      <div class="card">
+        <h2>Delegate Voting</h2>
+        <p class="muted">Use a registered delegate wallet to inspect positions, view candidates, and vote.</p>
+
+        <label>Select Position</label>
+        <select id="positionSelect">
+          <option value="">Loading positions...</option>
+        </select>
+
+        <div class="row-2">
+          <button class="btn-secondary" id="loadCandidatesBtn">Load Candidates</button>
+          <button class="btn-secondary" id="checkVotedBtn">Check If I Voted</button>
+        </div>
+
+        <div class="panel">
+          <div class="stat-title">Candidates for Selected Position</div>
+          <div id="candidatesPanel" class="muted">No candidates loaded yet.</div>
+        </div>
+
+        <label>Candidate ID to Vote For</label>
+        <input id="voteCandidateId" type="number" min="1" placeholder="Enter candidate ID" />
+        <button class="btn-primary" id="voteBtn">Cast Vote</button>
+      </div>
+
+      <div class="card">
+        <h2>Read Functions</h2>
+        <div class="row-2">
+          <button class="btn-secondary" id="readPositionsBtn">Read Positions</button>
+          <button class="btn-secondary" id="readCandidatesByPositionBtn">Read Candidates By Position</button>
+          <button class="btn-secondary" id="readCandidateBtn">Read Candidate</button>
+          <button class="btn-secondary" id="readTimeLeftBtn">Read Time Left</button>
+          <button class="btn-secondary" id="readWinnerBtn">Read Winner</button>
+          <button class="btn-secondary" id="readResultsBtn">Read Position Results</button>
+        </div>
+
+        <label>Candidate ID (for Read Candidate)</label>
+        <input id="readCandidateId" type="number" min="1" placeholder="Candidate ID" />
+
+        <label>Position (for candidate lists, winner, and results)</label>
+        <input id="readPositionText" placeholder="e.g. Chairperson" />
+
+        <div id="readOutputPanel" class="panel">
+          <div class="stat-title">Read Output</div>
+          <div id="readOutputContent" class="muted">No read function output yet.</div>
+        </div>
+      </div>
+
+      <div class="card full">
+        <h2>Activity Log</h2>
+        <div id="log" class="log">App ready. Connect MetaMask on Sepolia to begin.</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const CONTRACT_ADDRESS = "0x2e853F4553Cc2095629b68498e43588AAf6b6D93";
+
+    const ABI = [
+      "function admin() view returns (address)",
+      "function electionOpen() view returns (bool)",
+      "function votingDeadline() view returns (uint256)",
+      "function delegates(address) view returns (bool isRegistered, string name, string membershipNumber)",
+      "function registerDelegate(address delegateAddress, string name, string membershipNumber)",
+      "function registerCandidate(string name, string membershipNumber, string position)",
+      "function deactivateCandidate(uint256 candidateId)",
+      "function openElection(uint256 durationInMinutes)",
+      "function closeElection()",
+      "function vote(uint256 candidateId)",
+      "function getCandidate(uint256 candidateId) view returns (uint256 id, string name, string membershipNumber, string position, uint256 voteCount, bool isActive)",
+      "function getCandidatesByPosition(string position) view returns (uint256[])",
+      "function getAllPositions() view returns (string[])",
+      "function hasDelegateVotedForPosition(address delegateAddress, string position) view returns (bool)",
+      "function winningCandidate(string position) view returns (uint256)",
+      "function winnerDetails(string position) view returns (uint256 id, string name, string membershipNumber, uint256 voteCount)",
+      "function getPositionResults(string position) view returns (uint256[] candidateIds, string[] names, uint256[] voteCounts, bool[] activeStatuses)",
+      "function timeLeft() view returns (uint256)",
+      "function transferAdmin(address newAdmin)"
+    ];
+
+    let provider = null;
+    let signer = null;
+    let contract = null;
+    let account = null;
+    let isConnected = false;
+    let pendingToastRef = null;
+    let suppressNextAccountsChangedToast = false;
+    let suppressNextDisconnectToast = false;
+    let lastToastSignature = null;
+    let lastToastAt = 0;
+
+    const $ = (id) => document.getElementById(id);
+
+    function log(message) {
+      const now = new Date().toLocaleTimeString();
+      const area = $("log");
+      if (area) area.textContent = `[${now}] ${message}\n` + area.textContent;
+    }
+
+    function readableError(err) {
+      const raw = err?.shortMessage || err?.reason || err?.message || err?.info?.error?.message || String(err);
+      const normalized = String(raw).toLowerCase();
+
+      if (normalized.includes("user rejected") || normalized.includes("user denied")) return "Transaction was cancelled in MetaMask.";
+      if (normalized.includes("only admin")) return "Only the admin can perform this action.";
+      if (normalized.includes("election is not open")) return "The election is not currently open.";
+      if (normalized.includes("voting deadline has passed")) return "Voting deadline has already passed.";
+      if (normalized.includes("only registered delegates can vote")) return "Only registered delegates can vote.";
+      if (normalized.includes("you have already voted for this position")) return "You have already voted for this position.";
+      if (normalized.includes("candidate does not exist")) return "The specified candidate does not exist.";
+      if (normalized.includes("invalid delegate address")) return "Invalid delegate address.";
+      if (normalized.includes("invalid new admin address")) return "Invalid new admin address.";
+      if (normalized.includes("insufficient funds")) return "The wallet has insufficient ETH to complete this transaction.";
+      if (normalized.includes("execution reverted")) return raw;
+
+      return raw;
+    }
+
+    function showToast(message, type = "info", timeout = 4500) {
+      const container = $("toastContainer");
+      if (!container) return null;
+
+      const signature = `${type}::${message}`;
+      const now = Date.now();
+      if (lastToastSignature === signature && now - lastToastAt < 1200) return null;
+
+      lastToastSignature = signature;
+      lastToastAt = now;
+
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+      const text = document.createElement("div");
+      text.className = "toast-text";
+      text.textContent = message;
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "toast-close";
+      closeBtn.type = "button";
+      closeBtn.textContent = "×";
+      closeBtn.onclick = () => toast.remove();
+      toast.appendChild(text);
+      toast.appendChild(closeBtn);
+      container.appendChild(toast);
+
+      if (timeout > 0) setTimeout(() => { if (toast.parentNode) toast.remove(); }, timeout);
+      return toast;
+    }
+
+    function showPersistentToast(message, type = "info") {
+      return showToast(message, type, 0);
+    }
+
+    function removeToast(toastRef) {
+      if (toastRef && toastRef.parentNode) toastRef.remove();
+    }
+
+    function shortAddress(addr) {
+      if (!addr || addr === ethers.ZeroAddress) return "Unknown";
+      return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatTimestamp(ts) {
+      const n = Number(ts);
+      if (!n || n <= 0) return "-";
+      return new Date(n * 1000).toLocaleString("en-GB", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      });
+    }
+
+    function formatSeconds(seconds) {
+      const s = Number(seconds);
+      if (!s || s <= 0) return "0 seconds";
+      const days = Math.floor(s / 86400);
+      const hours = Math.floor((s % 86400) / 3600);
+      const minutes = Math.floor((s % 3600) / 60);
+      const secs = s % 60;
+      const parts = [];
+      if (days) parts.push(`${days}d`);
+      if (hours) parts.push(`${hours}h`);
+      if (minutes) parts.push(`${minutes}m`);
+      if (secs || parts.length === 0) parts.push(`${secs}s`);
+      return parts.join(" ");
+    }
+
+    function setConnectedUi(connected) {
+      isConnected = connected;
+      const btn = $("connectBtn");
+      if (!btn) return;
+      btn.textContent = connected ? "Disconnect Wallet" : "Connect Wallet";
+      btn.className = connected ? "btn-danger" : "btn-primary";
+    }
+
+    function clearWalletUi() {
+      $("walletAddress").textContent = "Not connected";
+      $("walletRole").textContent = "Unknown";
+      $("networkName").textContent = "Unknown";
+      $("electionStatusText").textContent = "-";
+      $("timeLeftText").textContent = "-";
+      $("deadlineText").textContent = "-";
+      $("positionsCountText").textContent = "-";
+      $("roleStatusText").textContent = "-";
+      setConnectedUi(false);
+    }
+
+    function requireConnected() {
+      if (!contract || !signer) throw new Error("Please connect MetaMask first.");
+    }
+
+    async function detectWalletRole(currentAccount) {
+      if (!contract || !currentAccount) return "Unknown";
+      try {
+        const [adminAddr, delegateInfo] = await Promise.all([
+          contract.admin(),
+          contract.delegates(currentAccount)
+        ]);
+        if (currentAccount.toLowerCase() === adminAddr.toLowerCase()) return "Admin";
+        if (delegateInfo?.[0]) return "Registered Delegate";
+        return "Unassigned Wallet";
+      } catch {
+        return "Unknown";
+      }
+    }
+
+    async function disconnectWallet(showUserToast = true) {
+      try {
+        suppressNextDisconnectToast = !showUserToast;
+        if (window.ethereum?.request) {
+          try {
+            await window.ethereum.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] });
+            log("Wallet permission revoked for this dApp.");
+          } catch (revokeErr) {
+            log(`Permission revoke not completed: ${readableError(revokeErr)}`);
+          }
+        }
+        provider = null;
+        signer = null;
+        contract = null;
+        account = null;
+        clearWalletUi();
+        log("Wallet disconnected from dApp session.");
+        if (showUserToast) showToast("Wallet disconnected. Click again to connect a different address.", "info", 5000);
+      } catch (err) {
+        const msg = readableError(err);
+        log(`Disconnect Wallet failed: ${msg}`);
+        showToast(`Disconnect Wallet failed: ${msg}`, "error", 6000);
+      }
+    }
+
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) {
+          showToast("MetaMask not detected. Install MetaMask first.", "error", 6000);
+          return;
+        }
+        if (isConnected && account) {
+          suppressNextAccountsChangedToast = true;
+          await disconnectWallet(true);
+          return;
+        }
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        if (!accounts || !accounts.length) throw new Error("No wallet account was selected.");
+
+        signer = await provider.getSigner();
+        account = await signer.getAddress();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        const network = await provider.getNetwork();
+        const role = await detectWalletRole(account);
+        $("walletAddress").textContent = shortAddress(account);
+        $("walletRole").textContent = role;
+        $("networkName").textContent = `${network.name} (${network.chainId})`;
+        $("contractAddressText").textContent = CONTRACT_ADDRESS;
+        setConnectedUi(true);
+        log(`Connected wallet: ${account} | Detected role: ${role}`);
+        showToast(`Wallet connected successfully. Role: ${role}.`, "success");
+        await refreshState();
+      } catch (err) {
+        const msg = readableError(err);
+        log(`Connect Wallet failed: ${msg}`);
+        showToast(`Connect Wallet failed: ${msg}`, "error", 6000);
+      }
+    }
+
+    async function refreshPositionsDropdown(preferred = "") {
+      try {
+        if (!contract) return;
+        const positions = await contract.getAllPositions();
+        const select = $("positionSelect");
+        select.innerHTML = "";
+        if (!positions.length) {
+          select.innerHTML = '<option value="">No positions registered yet</option>';
+          return;
+        }
+        select.innerHTML = '<option value="">Select a position</option>' + positions.map(pos => {
+          const selected = preferred && preferred === pos ? ' selected' : '';
+          return `<option value="${escapeHtml(pos)}"${selected}>${escapeHtml(pos)}</option>`;
+        }).join("");
+      } catch (err) {
+        log(`Loading positions failed: ${readableError(err)}`);
+      }
+    }
+
+    async function refreshState() {
+      try {
+        requireConnected();
+        const [isOpen, deadline, timeLeft, positions, role] = await Promise.all([
+          contract.electionOpen(),
+          contract.votingDeadline(),
+          contract.timeLeft(),
+          contract.getAllPositions(),
+          detectWalletRole(account)
+        ]);
+
+        $("walletAddress").textContent = shortAddress(account);
+        $("walletRole").textContent = role;
+        $("roleStatusText").textContent = role;
+        $("electionStatusText").textContent = isOpen ? "Open" : "Closed";
+        $("timeLeftText").textContent = formatSeconds(timeLeft);
+        $("deadlineText").textContent = Number(deadline) > 0 ? formatTimestamp(deadline) : "-";
+        $("positionsCountText").textContent = String(positions.length);
+        $("readPositionText").value = $("readPositionText").value || "";
+        await refreshPositionsDropdown($("positionSelect").value);
+        log(`State refreshed. Election: ${isOpen ? "Open" : "Closed"} | Role: ${role}`);
+      } catch (err) {
+        log(`Refresh failed: ${readableError(err)}`);
+      }
+    }
+
+    async function sendTx(txFactory, successLabel) {
+      try {
+        requireConnected();
+        pendingToastRef = showPersistentToast(`${successLabel} pending. Confirm in MetaMask and wait for blockchain confirmation...`, "info");
+        const tx = await txFactory();
+        removeToast(pendingToastRef);
+        pendingToastRef = showPersistentToast(`${successLabel} submitted.\nTx: ${tx.hash}\nWaiting for confirmation...`, "info");
+        log(`${successLabel}: transaction submitted → ${tx.hash}`);
+        await tx.wait();
+        removeToast(pendingToastRef);
+        pendingToastRef = null;
+        log(`${successLabel}: transaction confirmed.`);
+        showToast(`${successLabel} completed successfully.`, "success");
+        await refreshState();
+      } catch (err) {
+        removeToast(pendingToastRef);
+        pendingToastRef = null;
+        const msg = readableError(err);
+        log(`${successLabel} failed: ${msg}`);
+        showToast(`${successLabel} failed: ${msg}`, "error", 6500);
+      }
+    }
+
+    async function callView(action, successLabel) {
+      try {
+        requireConnected();
+        const result = await action();
+        log(`${successLabel}: ${JSON.stringify(result, (_, v) => typeof v === "bigint" ? v.toString() : v, 2)}`);
+        showToast(`${successLabel} completed.`, "success", 3000);
+        return result;
+      } catch (err) {
+        const msg = readableError(err);
+        log(`${successLabel} failed: ${msg}`);
+        showToast(`${successLabel} failed: ${msg}`, "error", 6500);
+      }
+    }
+
+    function setReadOutput(title, fields) {
+      const container = $("readOutputContent");
+      if (!fields?.length) {
+        container.innerHTML = `<div class="muted">No data available for ${escapeHtml(title)}.</div>`;
+        return;
+      }
+      const rows = fields.map(({ label, value }) => `
+        <div class="stat" style="margin-top:10px;">
+          <div class="stat-title">${escapeHtml(label)}</div>
+          <div class="stat-value">${escapeHtml(value)}</div>
+        </div>
+      `).join("");
+      container.innerHTML = `<div class="stat-title">${escapeHtml(title)}</div>${rows}`;
+    }
+
+    function setReadOutputTable(title, columns, rows) {
+      const container = $("readOutputContent");
+      if (!rows?.length) {
+        container.innerHTML = `<div class="muted">No data available for ${escapeHtml(title)}.</div>`;
+        return;
+      }
+      const headerHtml = columns.map(col => `<th>${escapeHtml(col)}</th>`).join("");
+      const bodyHtml = rows.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("");
+      container.innerHTML = `
+        <div class="stat-title" style="margin-bottom:10px;">${escapeHtml(title)}</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>${headerHtml}</tr></thead>
+            <tbody>${bodyHtml}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    async function loadCandidatesForSelectedPosition(outputToReadPanel = false) {
+      const position = $("positionSelect").value || $("readPositionText").value.trim();
+      if (!position) {
+        showToast("Select or enter a position first.", "error", 4000);
+        return;
+      }
+
+      const candidateIds = await callView(() => contract.getCandidatesByPosition(position), `Load Candidates for ${position}`);
+      if (!candidateIds) return;
+
+      if (!candidateIds.length) {
+        $("candidatesPanel").innerHTML = `<div class="muted">No candidates registered for ${escapeHtml(position)}.</div>`;
+        if (outputToReadPanel) setReadOutput("Candidates By Position", [{ label: "Position", value: position }, { label: "Result", value: "No candidates registered" }]);
+        return;
+      }
+
+      const candidates = await Promise.all(candidateIds.map(id => contract.getCandidate(id)));
+      const panelHtml = candidates.map(c => `
+        <div class="stat" style="margin-top:10px;">
+          <div class="stat-title">Candidate ID ${escapeHtml(String(c[0]))}</div>
+          <div class="stat-value">${escapeHtml(c[1])}</div>
+          <div class="muted">Membership: ${escapeHtml(c[2])}</div>
+          <div class="muted">Position: ${escapeHtml(c[3])}</div>
+          <div class="muted">Votes: ${escapeHtml(String(c[4]))} | Active: ${c[5] ? "Yes" : "No"}</div>
+        </div>
+      `).join("");
+      $("candidatesPanel").innerHTML = panelHtml;
+
+      if (outputToReadPanel) {
+        const rows = candidates.map(c => [String(c[0]), String(c[1]), String(c[2]), String(c[4]), c[5] ? "Yes" : "No"]);
+        setReadOutputTable(`Candidates for ${position}`, ["ID", "Name", "Membership #", "Votes", "Active"], rows);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      $("contractAddressText").textContent = CONTRACT_ADDRESS;
+      clearWalletUi();
+
+      $("connectBtn").addEventListener("click", connectWallet);
+      $("refreshBtn").addEventListener("click", refreshState);
+
+      $("registerDelegateBtn").addEventListener("click", async () => {
+        await sendTx(
+          () => contract.registerDelegate($("delegateAddress").value, $("delegateName").value, $("delegateMembership").value),
+          "Register Delegate"
+        );
+      });
+
+      $("registerCandidateBtn").addEventListener("click", async () => {
+        await sendTx(
+          () => contract.registerCandidate($("candidateName").value, $("candidateMembership").value, $("candidatePosition").value),
+          "Register Candidate"
+        );
+        await refreshPositionsDropdown($("candidatePosition").value);
+      });
+
+      $("deactivateCandidateBtn").addEventListener("click", async () => {
+        await sendTx(() => contract.deactivateCandidate(BigInt($("deactivateCandidateId").value)), "Deactivate Candidate");
+      });
+
+      $("openElectionBtn").addEventListener("click", async () => {
+        await sendTx(() => contract.openElection(BigInt($("durationMinutes").value)), "Open Election");
+      });
+
+      $("closeElectionBtn").addEventListener("click", async () => {
+        await sendTx(() => contract.closeElection(), "Close Election");
+      });
+
+      $("transferAdminBtn").addEventListener("click", async () => {
+        await sendTx(() => contract.transferAdmin($("newAdminAddress").value), "Transfer Admin");
+      });
+
+      $("loadCandidatesBtn").addEventListener("click", async () => {
+        await loadCandidatesForSelectedPosition(false);
+      });
+
+      $("checkVotedBtn").addEventListener("click", async () => {
+        const position = $("positionSelect").value;
+        if (!position) {
+          showToast("Select a position first.", "error", 4000);
+          return;
+        }
+        const result = await callView(() => contract.hasDelegateVotedForPosition(account, position), `Check If I Voted For ${position}`);
+        if (result !== undefined) {
+          setReadOutput("Voting Status", [
+            { label: "Wallet", value: account || "-" },
+            { label: "Position", value: position },
+            { label: "Already Voted", value: result ? "Yes" : "No" }
+          ]);
+        }
+      });
+
+      $("voteBtn").addEventListener("click", async () => {
+        await sendTx(() => contract.vote(BigInt($("voteCandidateId").value)), "Cast Vote");
+      });
+
+      $("readPositionsBtn").addEventListener("click", async () => {
+        const result = await callView(() => contract.getAllPositions(), "Read Positions");
+        if (result) setReadOutputTable("Election Positions", ["#", "Position"], result.map((p, i) => [String(i + 1), String(p)]));
+      });
+
+      $("readCandidatesByPositionBtn").addEventListener("click", async () => {
+        await loadCandidatesForSelectedPosition(true);
+      });
+
+      $("readCandidateBtn").addEventListener("click", async () => {
+        const candidateId = $("readCandidateId").value;
+        const result = await callView(() => contract.getCandidate(BigInt(candidateId)), "Read Candidate");
+        if (result) {
+          setReadOutput("Candidate Details", [
+            { label: "Candidate ID", value: String(result[0]) },
+            { label: "Name", value: result[1] || "-" },
+            { label: "Membership Number", value: result[2] || "-" },
+            { label: "Position", value: result[3] || "-" },
+            { label: "Vote Count", value: String(result[4]) },
+            { label: "Active", value: result[5] ? "Yes" : "No" }
+          ]);
+        }
+      });
+
+      $("readTimeLeftBtn").addEventListener("click", async () => {
+        const result = await callView(() => contract.timeLeft(), "Read Time Left");
+        if (result !== undefined) setReadOutput("Time Left", [{ label: "Remaining Time", value: formatSeconds(result) }]);
+      });
+
+      $("readWinnerBtn").addEventListener("click", async () => {
+        const position = $("readPositionText").value.trim() || $("positionSelect").value;
+        if (!position) {
+          showToast("Enter or select a position first.", "error", 4000);
+          return;
+        }
+        const result = await callView(() => contract.winnerDetails(position), `Read Winner for ${position}`);
+        if (result) {
+          setReadOutput(`Winner for ${position}`, [
+            { label: "Candidate ID", value: String(result[0]) },
+            { label: "Name", value: result[1] || "-" },
+            { label: "Membership Number", value: result[2] || "-" },
+            { label: "Vote Count", value: String(result[3]) }
+          ]);
+        }
+      });
+
+      $("readResultsBtn").addEventListener("click", async () => {
+        const position = $("readPositionText").value.trim() || $("positionSelect").value;
+        if (!position) {
+          showToast("Enter or select a position first.", "error", 4000);
+          return;
+        }
+        const result = await callView(() => contract.getPositionResults(position), `Read Position Results for ${position}`);
+        if (result) {
+          const rows = (result[0] || []).map((_, i) => [
+            String(result[0][i]),
+            String(result[1][i] || "-"),
+            String(result[2][i] || "0"),
+            result[3][i] ? "Yes" : "No"
+          ]);
+          setReadOutputTable(`Results for ${position}`, ["Candidate ID", "Name", "Votes", "Active"], rows);
+        }
+      });
+
+      if (window.ethereum) {
+        window.ethereum.on("accountsChanged", async (accounts) => {
+          try {
+            if (suppressNextAccountsChangedToast) {
+              suppressNextAccountsChangedToast = false;
+              return;
+            }
+            if (!accounts || accounts.length === 0) {
+              await disconnectWallet(false);
+              log("MetaMask disconnected all accounts.");
+              if (!suppressNextDisconnectToast) showToast("All wallet accounts were disconnected.", "info", 5000);
+              suppressNextDisconnectToast = false;
+              return;
+            }
+            provider = new ethers.BrowserProvider(window.ethereum);
+            signer = await provider.getSigner();
+            account = accounts[0];
+            contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+            const network = await provider.getNetwork();
+            const role = await detectWalletRole(account);
+            $("walletAddress").textContent = shortAddress(account);
+            $("walletRole").textContent = role;
+            $("networkName").textContent = `${network.name} (${network.chainId})`;
+            setConnectedUi(true);
+            log(`Active wallet changed to: ${account} | Detected role: ${role}`);
+            showToast(`Wallet switched successfully. Role: ${role}.`, "success", 5000);
+            await refreshState();
+          } catch (err) {
+            const msg = readableError(err);
+            log(`Account switch handling failed: ${msg}`);
+            showToast(`Account switch handling failed: ${msg}`, "error", 6000);
+          }
+        });
+
+        window.ethereum.on("chainChanged", async () => {
+          try {
+            if (!account) return;
+            provider = new ethers.BrowserProvider(window.ethereum);
+            signer = await provider.getSigner();
+            contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+            const network = await provider.getNetwork();
+            $("networkName").textContent = `${network.name} (${network.chainId})`;
+            log(`Network changed to ${network.name} (${network.chainId}).`);
+            showToast(`Network changed to ${network.name}.`, "info", 4000);
+            await refreshState();
+          } catch (err) {
+            const msg = readableError(err);
+            log(`Network change handling failed: ${msg}`);
+            showToast(`Network change handling failed: ${msg}`, "error", 6000);
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
